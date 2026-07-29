@@ -2,8 +2,7 @@ name: build-and-push-image
 
 on:
   push:
-    branches: [main, master]
-    tags: ['v*', '[0-9]*']   # 兼容无 v 前缀的版本号 tag（如 0.1.0）
+    tags: ['[0-9]*']   # 仅无 v 前缀的数字 tag（如 0.1.0）触发构建；push main 不触发
   workflow_dispatch:
 
 env:

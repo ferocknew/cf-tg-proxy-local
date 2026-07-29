@@ -29,7 +29,8 @@ shoes 引擎提供 socks5/VLESS-over-WS+TLS 代理。
 - shoes 配置必须只写 tmpfs 并设 0600 权限
 
 ## CI 与发布（.github/workflows/docker.yml）
-- 触发：push main + tag（兼容 v* 前缀和无 v 前缀数字 tag，如 0.1.0）
+- 触发：仅 git tag（无 v 前缀数字，如 0.1.0）；push main 不触发构建
+- 发版：改 VERSION → commit → 打同号 git tag → push tag，才出镜像
 - 镜像 tag 来自 VERSION 文件（type=raw），不依赖 metadata-action 的 semver/sha
 - 推送 GHCR；私服可通过 Nexus proxy 上游自动代理
 
