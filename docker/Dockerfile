@@ -24,8 +24,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release \
     && cp target/release/cf-tg-proxy-local /cf-tg-proxy-local
 
-########## runtime：最小镜像 ##########
-FROM debian:bookworm-slim
+########## runtime：最小镜像（必须 trixie：与 builder rust:1-slim 对齐 glibc，否则报 GLIBC_2.39 not found）##########
+FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*

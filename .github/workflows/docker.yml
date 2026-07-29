@@ -3,7 +3,7 @@ name: build-and-push-image
 on:
   push:
     branches: [main, master]
-    tags: ['v*']
+    tags: ['v*', '[0-9]*']   # 兼容无 v 前缀的版本号 tag（如 0.1.0）
   workflow_dispatch:
 
 env:
@@ -33,6 +33,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 镜像 tag 取自 VERSION 文件（与 git tag 对齐，无 v 前缀，如 0.1.0）
+      - name: 读取版本号
+        id: ver
+        run: echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: 生成 tags / labels
         id: meta
         uses: docker/metadata-action@v5
@@ -40,10 +45,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}
           flavor: latest=true
           tags: |
+            type=raw,value=${{ steps.ver.outputs.version }}
             type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
 
       - name: 构建并推送（linux/amd64）
         uses: docker/build-push-action@v5
