@@ -1,0 +1,41 @@
+# cf-tg-proxy-local 部署范文
+#
+# 用法：把此文件和 .env 放到局域网服务器同一目录，执行 `docker compose up -d`
+# 镜像由 GitHub Actions 构建后推送到 GHCR，首次 push 代码后即可拉取。
+#
+# .env 需包含（机密，勿入仓库）：
+#   SUB_URL=...
+#   TG_PROXY_TYPE=socks5
+#   TG_PROXY_ADDR=0.0.0.0
+#   TG_PROXY_PORT=1080
+#   TG_PROXY_USER=...
+#   TG_PROXY_PASS=...
+
+services:
+  cf-tg-proxy:
+    # ↓↓↓ 替换为你的 GitHub 用户名（必须小写）↓↓↓
+    image: ghcr.io/<你的GitHub用户名>/cf-tg-proxy-local:latest
+    container_name: cf-tg-proxy
+    restart: unless-stopped
+
+    # 从同目录 .env 注入订阅与代理配置
+    env_file:
+      - .env
+
+    environment:
+      # 心跳 / 测速参数（可按需调整）
+      TG_HEARTBEAT_INTERVAL: "1800"           # 心跳探测间隔(秒)，默认 30 分钟
+      TG_SPEED_TIMEOUT: "3"                   # 单节点测速超时(秒)
+      TG_NODE_SLOW_THRESHOLD_MS: "500"        # 当前节点 RTT 超过此值则换节点
+      SHOES_CONFIG_PATH: /dev/shm/cf-tg-proxy/shoes.yaml
+
+    ports:
+      - "1080:1080"   # socks5：宿主机端口:容器端口
+
+    shm_size: 64m     # 配置写入内存 tmpfs，防止泄露订阅
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

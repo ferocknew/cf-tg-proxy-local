@@ -1,0 +1,30 @@
+[package]
+name = "cf-tg-proxy-local"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cf-tg-proxy-local"
+path = "src/main.rs"
+
+[dependencies]
+# 包装层：拉订阅、生成 shoes YAML、拉起子进程、心跳
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+base64 = "0.22"
+url = "2"
+percent-encoding = "2"
+
+# release 体积优化（容器镜像更小）
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
