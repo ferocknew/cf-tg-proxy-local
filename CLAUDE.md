@@ -33,7 +33,14 @@ shoes 引擎提供 socks5/VLESS-over-WS+TLS 代理。
 - 镜像 tag 来自 VERSION 文件（type=raw），不依赖 metadata-action 的 semver/sha
 - 推送 GHCR；私服可通过 Nexus proxy 上游自动代理
 
+## shoes 引擎关键行为（实测）
+- client_chains（复数数组）= round-robin 负载均衡；client_chain（单数）= 单节点
+- 默认配置热重载：atomic rename 触发后约 3s 自动重启 server 应用新配置，无需重启容器
+- close_notify ERROR（rustls UnexpectedEof）是无害噪音；shoes 不读 RUST_LOG，无法 env 屏蔽
+
 ## 历史踩坑记录
+- 测速只测 TCP connect RTT，会选"握手快但大文件差"的劣质节点；TG_TOP_N（默认 3）多节点分流缓解
+- 大文件卡死：订阅各节点 SNI 相同（同一 worker），CF Workers 限制与优选 IP 无关，代理桥无解
 - GLIBC 不兼容：builder(trixie,glibc2.40) vs runtime(bookworm,glibc2.36) → runtime 改 trixie-slim
 - 端口搞反：曾误用 TG_PROXY_PORT 做宿主机端口 → 正确分工 TG_PROXY_PORT=容器内, DOCKER_PORT=宿主机
 - compose environment 覆盖：曾在 environment 写死端口 → 改为纯 env_file，全部来自 .env

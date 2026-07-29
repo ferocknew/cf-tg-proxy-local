@@ -26,6 +26,7 @@
 | TG_HEARTBEAT_INTERVAL | 1800（秒） | 心跳探测间隔 |
 | TG_SPEED_TIMEOUT | 3（秒） | 单节点测速超时 |
 | TG_NODE_SLOW_THRESHOLD_MS | 500（毫秒） | 判定节点变慢的延迟阈值 |
+| TG_TOP_N | 3 | round-robin 节点池大小（写入 shoes client_chains） |
 | SHOES_CONFIG_PATH | /dev/shm/cf-tg-proxy/shoes.yaml | shoes 配置写入路径（须 tmpfs） |
 
 ## 部署
