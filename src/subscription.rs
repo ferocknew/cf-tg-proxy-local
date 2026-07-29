@@ -34,6 +34,15 @@ impl VlessNode {
     }
 }
 
+/// 多节点的稳定签名：先按各节点 signature 排序，再逗号拼接。
+/// 排序保证"集合相同但顺序不同"（RTT 抖动导致 top-N 顺序变）时签名一致，
+/// 避免心跳误判 top-N 变化而无谓重写配置、触发 shoes 频繁热重载。
+pub fn nodes_signature(nodes: &[VlessNode]) -> String {
+    let mut sigs: Vec<String> = nodes.iter().map(|n| n.signature()).collect();
+    sigs.sort();
+    sigs.join(",")
+}
+
 /// 拉取订阅并解析为节点列表。
 pub async fn fetch_nodes(cfg: &Config) -> Result<Vec<VlessNode>> {
     if cfg.sub_url.is_empty() {
@@ -163,5 +172,18 @@ mod tests {
     fn 空_或_无节点_返回错误() {
         assert!(parse_subscription("").is_err());
         assert!(parse_subscription("not a sub").is_err());
+    }
+
+    #[test]
+    fn nodes_signature_集合相同顺序不同则一致() {
+        let body = "vless://aaa@1.1.1.1:443?host=x.com&sni=x.com&path=%2F#A\nvless://bbb@2.2.2.2:8443?host=y.com&sni=y.com&path=%2F#B";
+        let nodes = parse_subscription(body).unwrap();
+        assert_eq!(nodes.len(), 2);
+        let reversed: Vec<VlessNode> = nodes.iter().rev().cloned().collect();
+        // 顺序不同但集合相同 -> 签名必须一致（防抖关键）
+        assert_eq!(nodes_signature(&nodes), nodes_signature(&reversed));
+        // 内容不同 -> 签名不同
+        let only_first = vec![nodes[0].clone()];
+        assert_ne!(nodes_signature(&nodes), nodes_signature(&only_first));
     }
 }

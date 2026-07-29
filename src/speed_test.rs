@@ -50,13 +50,15 @@ pub async fn test_single(node: &VlessNode, timeout: Duration) -> Option<Duration
     test_one(node.address.clone(), node.port, timeout).await
 }
 
-/// 从测速结果中选出延迟最低的可达节点下标；全部不可达返回 None。
-pub fn pick_best(results: &[SpeedResult]) -> Option<usize> {
-    results
+/// 从测速结果中按延迟升序取前 n 个可达节点下标；不足 n 个则返回全部可达。
+/// 用于选出 top-N 节点交给 shoes 的 client_chains 做 round-robin 负载均衡。
+pub fn pick_top_n(results: &[SpeedResult], n: usize) -> Vec<usize> {
+    let mut reachable: Vec<(usize, Duration)> = results
         .iter()
         .filter_map(|r| r.rtt.map(|rtt| (r.index, rtt)))
-        .min_by_key(|(_, rtt)| *rtt)
-        .map(|(i, _)| i)
+        .collect();
+    reachable.sort_by_key(|(_, rtt)| *rtt);
+    reachable.into_iter().take(n).map(|(i, _)| i).collect()
 }
 
 #[cfg(test)]
@@ -64,31 +66,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn pick_best_选延迟最低() {
+    fn pick_top_n_正常取前n() {
         let results = vec![
-            SpeedResult { index: 0, rtt: None },
-            SpeedResult { index: 1, rtt: Some(Duration::from_millis(100)) },
-            SpeedResult { index: 2, rtt: Some(Duration::from_millis(50)) },
-            SpeedResult { index: 3, rtt: Some(Duration::from_millis(200)) },
+            SpeedResult { index: 0, rtt: Some(Duration::from_millis(100)) },
+            SpeedResult { index: 1, rtt: Some(Duration::from_millis(50)) },
+            SpeedResult { index: 2, rtt: Some(Duration::from_millis(200)) },
+            SpeedResult { index: 3, rtt: Some(Duration::from_millis(75)) },
         ];
-        assert_eq!(pick_best(&results), Some(2));
+        // 升序：50(index1), 75(index3), 100(index0) -> 取前 3
+        assert_eq!(pick_top_n(&results, 3), vec![1, 3, 0]);
     }
 
     #[test]
-    fn pick_best_全不可达返回none() {
+    fn pick_top_n_n大于可达数取全部() {
+        let results = vec![
+            SpeedResult { index: 0, rtt: Some(Duration::from_millis(100)) },
+            SpeedResult { index: 1, rtt: Some(Duration::from_millis(50)) },
+        ];
+        assert_eq!(pick_top_n(&results, 5), vec![1, 0]);
+    }
+
+    #[test]
+    fn pick_top_n_全不可达返回空() {
         let results = vec![
             SpeedResult { index: 0, rtt: None },
             SpeedResult { index: 1, rtt: None },
         ];
-        assert_eq!(pick_best(&results), None);
+        assert!(pick_top_n(&results, 3).is_empty());
     }
 
     #[test]
-    fn pick_best_唯一可达即选它() {
+    fn pick_top_n_恰好n个() {
         let results = vec![
-            SpeedResult { index: 0, rtt: None },
-            SpeedResult { index: 5, rtt: Some(Duration::from_secs(2)) },
+            SpeedResult { index: 0, rtt: Some(Duration::from_millis(10)) },
+            SpeedResult { index: 1, rtt: Some(Duration::from_millis(20)) },
+            SpeedResult { index: 2, rtt: Some(Duration::from_millis(30)) },
         ];
-        assert_eq!(pick_best(&results), Some(5));
+        assert_eq!(pick_top_n(&results, 3), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn pick_top_n_空输入() {
+        let results: Vec<SpeedResult> = vec![];
+        assert!(pick_top_n(&results, 3).is_empty());
     }
 }
